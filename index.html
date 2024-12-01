@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Football Game</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.70.0/phaser.min.js"></script>
+<style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #1a472a;
+            font-family: 'Press Start 2P', system-ui;
+        }
+        #game-container {
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+<div id="game-container"></div>
+<script>
+        const config = {
+            type: Phaser.AUTO,
+            width: 800,
+            height: 600,
+            backgroundColor: '#2d572c',
+            parent: 'game-container',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 300 },
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            },
+            pixelArt: true
+        };
+
+        const game = new Phaser.Game(config);
+
+        let player;
+        let ball;
+        let goals;
+        let cursors;
+        let score = 0;
+        let scoreText;
+        let gameOver = false;
+
+        function preload() {
+            // Create pixel art graphics programmatically
+            const graphics = this.add.graphics();
+            
+            // Player texture (rectangle)
+            graphics.fillStyle(0x3498db);
+            graphics.fillRect(0, 0, 32, 64);
+            graphics.generateTexture('player', 32, 64);
+            
+            // Ball texture (circle)
+            graphics.clear();
+            graphics.fillStyle(0xffffff);
+            graphics.fillCircle(8, 8, 8);
+            graphics.generateTexture('ball', 16, 16);
+            
+            // Goal texture
+            graphics.clear();
+            graphics.lineStyle(4, 0xffffff);
+            graphics.strokeRect(0, 0, 32, 96);
+            graphics.generateTexture('goal', 32, 96);
+            
+            graphics.destroy();
+        }
+
+        function create() {
+            // Create field markings
+            const fieldLines = this.add.graphics();
+            fieldLines.lineStyle(2, 0xffffff, 0.8);
+            fieldLines.strokeRect(50, 50, 700, 500);
+            fieldLines.strokeCircle(400, 300, 50);
+
+            // Create player
+            player = this.physics.add.sprite(400, 500, 'player');
+            player.setCollideWorldBounds(true);
+            player.setBounce(0.2);
+
+            // Create ball
+            ball = this.physics.add.sprite(400, 300, 'ball');
+            ball.setCollideWorldBounds(true);
+            ball.setBounce(0.8);
+            ball.setDrag(50);
+
+            // Create goals
+            goals = this.physics.add.staticGroup();
+            goals.create(784, 300, 'goal');
+            goals.create(16, 300, 'goal');
+
+            // Setup collisions
+            this.physics.add.collider(player, ball, hitBall, null, this);
+            this.physics.add.overlap(ball, goals, scoreGoal, null, this);
+
+            // Setup controls
+            cursors = this.input.keyboard.createCursorKeys();
+
+            // Add score display
+            scoreText = this.add.text(16, 16, 'Score: 0', {
+                fontSize: '32px',
+                fill: '#fff'
+            });
+        }
+
+        function update() {
+            if (gameOver) {
+                return;
+            }
+
+            // Player movement
+            if (cursors.left.isDown) {
+                player.setVelocityX(-160);
+            } else if (cursors.right.isDown) {
+                player.setVelocityX(160);
+            } else {
+                player.setVelocityX(0);
+            }
+
+            if (cursors.up.isDown && player.body.touching.down) {
+                player.setVelocityY(-330);
+            }
+
+            // Ball physics dampening
+            ball.setAngularVelocity(ball.body.velocity.x * 2);
+        }
+
+        function hitBall(player, ball) {
+            const diff = player.x - ball.x;
+            ball.setVelocityX(-10 * diff);
+            ball.setVelocityY(-250);
+        }
+
+        function scoreGoal(ball, goal) {
+            if (goal.x > 400) { // Right goal
+                score += 1;
+            } else { // Left goal
+                score -= 1;
+            }
+            scoreText.setText('Score: ' + score);
+
+            // Reset ball position
+            ball.setPosition(400, 300);
+            ball.setVelocity(0, 0);
+
+            if (Math.abs(score) >= 5) {
+                gameOver = true;
+                this.add.text(300, 200, 'Game Over!', {
+                    fontSize: '64px',
+                    fill: '#fff'
+                });
+            }
+        }
+    </script>
+</body>
+</html>
